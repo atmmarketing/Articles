@@ -10,13 +10,22 @@ Articles.page.UpdateArticle = function(config) {
     Articles.page.UpdateArticle.superclass.constructor.call(this,config);
 };
 Ext.extend(Articles.page.UpdateArticle,MODx.page.UpdateResource,{
+	doesButtonExist: function(btnArray, lexiconKey) {
+		var exists = false, _k = 0;
+		btnArray.map(function(item) {
+			if(lexiconKey == item.text) exists = _k;
+			_k++;
+		});
+		return exists;
+	}
+    ,getButtons: function(cfg) {
+		var btns = MODx.page.UpdateResource.prototype.getButtons(cfg); //[];
 
-    getButtons: function(cfg) {
-        var btns = [];
-        if (cfg.canSave == 1) {
+        if (cfg.canSave == 1 && this.doesButtonExist(btns, _('save') === false)) {
             btns.push({
                 process: (MODx.config.connector_url) ? 'resource/update' : 'update'
                 ,text: _('save')
+                ,cls: 'primary-button'
                 ,method: 'remote'
                 ,checkDirty: cfg.richtext || MODx.request.activeSave == 1 ? false : true
                 ,keys: [{
@@ -25,7 +34,7 @@ Ext.extend(Articles.page.UpdateArticle,MODx.page.UpdateResource,{
                 }]
             });
             btns.push('-');
-        } else if (cfg.locked) {
+        } else if (cfg.locked && !this.doesButtonExist(btns, _('locked'))) {
             btns.push({
                 text: cfg.lockedText || _('locked')
                 ,handler: Ext.emptyFn
@@ -33,38 +42,65 @@ Ext.extend(Articles.page.UpdateArticle,MODx.page.UpdateResource,{
             });
             btns.push('-');
         }
-        btns.push({
-            text: _('articles.article_publish')
-            ,id: 'modx-article-publish'
-            ,hidden: cfg.record.published ? true : false
-            ,handler: this.publishArticle
-        });
-        btns.push({
-            text: _('articles.article_unpublish')
-            ,id: 'modx-article-unpublish'
-            ,hidden: cfg.record.published ? false : true
-            ,handler: this.unpublishArticle
-        });
-        btns.push('-');
-        btns.push({
-            process: 'preview'
-            ,text: _('view')
-            ,handler: this.preview
-            ,scope: this
-        });
-        btns.push('-');
-        btns.push({
-            process: 'cancel'
-            ,text: _('cancel')
-            ,handler: this.cancel
-            ,scope: this
-        });
-        btns.push('-');
-        btns.push({
-            text: _('help_ex')
-            ,handler: MODx.loadHelpPane
-        });
-        return btns;
+	    if(cfg.publish_document && !this.doesButtonExist(btns, _('articles.article_publish'))) {
+	        btns.push({
+	            text: _('articles.article_publish')
+	            ,id: 'modx-article-publish'
+	            ,hidden: cfg.record.published ? true : false
+	            ,handler: this.publishArticle
+	        });
+	        btns.push({
+	            text: _('articles.article_unpublish')
+	            ,id: 'modx-article-unpublish'
+	            ,hidden: cfg.record.published ? false : true
+	            ,handler: this.unpublishArticle
+	        });
+		    btns.push('-');
+	    }
+
+		var _view = {
+			process: 'preview'
+			,text: _('view')
+			,handler: this.preview
+			,scope: this
+		}, _idx = this.doesButtonExist(btns, _('view'));
+
+		if(!_idx) {
+			btns.push(_view);
+			btns.push('-');
+		} else {
+			btns.splice(_idx,1, _view);
+		}
+
+		var _cnl = {
+			process: 'cancel'
+			,text: _('cancel')
+			,handler: this.cancel
+			,scope: this
+		}, _idx = this.doesButtonExist(btns, _('cancel'));
+
+		if(!_idx) {
+			btns.push(_cnl);
+			btns.push('-');
+		} else {
+			btns.splice(_idx,1, _cnl);
+		}
+
+		if(!this.doesButtonExist(btns, _('help_ex'))) {
+	        btns.push({
+	            text: _('help_ex')
+	            ,handler: MODx.loadHelpPane
+	        });
+		}
+
+		// remove duplicate spacings
+		for(var i=0; i<=(btns.length - 1); i++) {
+			var item = btns[i];
+			if(item != '-') continue;
+			if(btns[i+1] == '-' || (btns[i+1] && btns[i+1].hidden == true)) btns.splice(i,1);
+		}
+
+		return btns;
     }
 
     ,publishArticle: function(btn,e) {
@@ -236,7 +272,7 @@ Ext.extend(Articles.panel.Article,MODx.panel.Resource,{
         
         if (MODx.config.tvs_below_content == 1) {
             var tvs = this.getTemplateVariablesPanel(config);
-            tvs.style = 'margin-top: 10px';
+            tvs.style = 'margin-top: 10px;visibility: visible';
             its.push(tvs);
         }
         return its;
